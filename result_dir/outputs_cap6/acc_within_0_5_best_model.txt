@@ -1,1 +1,0 @@
-Percentagem dentro de ±0.5 (teste) do melhor modelo: 72.97 %

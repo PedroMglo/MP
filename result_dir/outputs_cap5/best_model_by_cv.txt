@@ -1,2 +1,0 @@
-Melhor modelo escolhido por CV (treino): rf
-Descricao: Random Forest (mtry=3)

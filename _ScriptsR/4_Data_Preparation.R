@@ -1,8 +1,11 @@
 ###############################################################################
 # 4_Data_Preparation.R
-# Capitulo 4: Data Preparation + Split + Scaling (SEM leakage)
+# Capitulo 4: Data Preparation + Split (train/val/test) + Scaling (SEM leakage)
 ###############################################################################
 
+# =============================
+# 4.1 Preparacao basica
+# =============================
 prep_basic <- function(df) {
   stopifnot("score_review" %in% names(df))
   
@@ -21,27 +24,11 @@ prep_basic <- function(df) {
   df
 }
 
-stratified_split <- function(df, target = "score_review", train_frac = 0.8, seed = 1) {
-  set.seed(seed)
-  strata <- as.factor(df[[target]])
-  train_idx <- c()
-  
-  for (lvl in levels(strata)) {
-    idx_lvl <- which(strata == lvl)
-    n_lvl <- length(idx_lvl)
-    n_train <- floor(train_frac * n_lvl)
-    if (n_train < 1 && n_lvl > 0) n_train <- 1
-    train_idx <- c(train_idx, sample(idx_lvl, size = n_train, replace = FALSE))
-  }
-  
-  train_idx <- sort(unique(train_idx))
-  list(
-    train = df[train_idx, , drop = FALSE],
-    test  = df[-train_idx, , drop = FALSE]
-  )
-}
-
+# =============================
+# 4.2 Preprocess fit/apply (SEM leakage)
+# =============================
 preprocess_fit <- function(train, target = "score_review", rare_thr = 0.02) {
+  
   # Binarias apos conversoes
   bin_cols <- names(train)[sapply(train, is_binary_01)]
   bin_cols <- setdiff(bin_cols, target)
@@ -137,6 +124,9 @@ preprocess_apply <- function(df, params) {
   df
 }
 
+# =============================
+# 4.3 Scaling (SEM leakage)
+# =============================
 scale_fit <- function(train, target, bin_cols) {
   predictors_num <- names(train)[sapply(train, is.numeric)]
   predictors_num <- setdiff(predictors_num, c(target, bin_cols))
@@ -156,46 +146,72 @@ scale_apply <- function(df, scaler) {
   df
 }
 
-run_cap4 <- function(df_raw, out_dir, seed = 1, rare_thr = 0.02) {
+# =============================
+# 4.4 Runner
+# =============================
+run_cap4 <- function(df_raw,
+                     out_dir,
+                     seed = 1,
+                     train_frac = 0.7,
+                     val_frac = 0.1,
+                     rare_thr = 0.02) {
+  
+  if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+  
   df <- prep_basic(df_raw)
   
-  # Split estratificado
-  split <- stratified_split(df, target = "score_review", train_frac = 0.8, seed = seed)
-  train <- split$train
-  test  <- split$test
+  # Split estratificado (train/val/test) - SEM leakage
+  split3 <- stratified_split_3way(
+    df, target = "score_review",
+    train_frac = train_frac, val_frac = val_frac,
+    seed = seed
+  )
+  train <- split3$train
+  val   <- split3$val
+  test  <- split3$test
   
-  # Fit preprocess no treino e aplicar em ambos
+  # Fit preprocess no treino e aplicar em train/val/test
   params <- preprocess_fit(train, target = "score_review", rare_thr = rare_thr)
   train2 <- preprocess_apply(train, params)
+  val2   <- preprocess_apply(val,   params)
   test2  <- preprocess_apply(test,  params)
   
   # Recalcular bin_cols depois de drop (para scaling correto)
   bin_cols2 <- names(train2)[sapply(train2, is_binary_01)]
   bin_cols2 <- setdiff(bin_cols2, "score_review")
   
-  # Scaling (SEM leakage) para modelos sensíveis (lm/glmnet/knn/svm)
-  scaler <- scale_fit(train2, target = "score_review", bin_cols = bin_cols2)
+  # Scaling (SEM leakage): fit no treino e aplica a tudo
+  scaler  <- scale_fit(train2, target = "score_review", bin_cols = bin_cols2)
   train_s <- scale_apply(train2, scaler)
-  test_s  <- scale_apply(test2, scaler)
+  val_s   <- scale_apply(val2,   scaler)
+  test_s  <- scale_apply(test2,  scaler)
   
   # Guardar datasets
-  write.csv(train2,   file.path(out_dir, "train.csv"), row.names = FALSE)
-  write.csv(test2,    file.path(out_dir, "test.csv"), row.names = FALSE)
-  write.csv(train_s,  file.path(out_dir, "train_scaled.csv"), row.names = FALSE)
-  write.csv(test_s,   file.path(out_dir, "test_scaled.csv"), row.names = FALSE)
+  write.csv(train2,  file.path(out_dir, "train.csv"), row.names = FALSE)
+  write.csv(val2,    file.path(out_dir, "val.csv"),   row.names = FALSE)
+  write.csv(test2,   file.path(out_dir, "test.csv"),  row.names = FALSE)
+  
+  write.csv(train_s, file.path(out_dir, "train_scaled.csv"), row.names = FALSE)
+  write.csv(val_s,   file.path(out_dir, "val_scaled.csv"),   row.names = FALSE)
+  write.csv(test_s,  file.path(out_dir, "test_scaled.csv"),  row.names = FALSE)
   
   # Guardar info do preprocess (para relatório)
   write.csv(data.frame(drop_cols = params$drop_cols),
             file.path(out_dir, "cap4_drop_cols_raras.csv"), row.names = FALSE)
+  
   save_lines(c(
     "CAPITULO 4 - DATA PREPARATION concluido.",
     paste("Seed:", seed),
+    paste("train_frac:", train_frac, "| val_frac:", val_frac, "| test_frac:", round(1 - train_frac - val_frac, 3)),
     paste("rare_thr:", params$rare_thr),
     paste("Drop cols (raras/NZV):", if (length(params$drop_cols) == 0) "nenhuma" else paste(params$drop_cols, collapse = ", ")),
-    paste("Train:", nrow(train2), " | Test:", nrow(test2)),
+    paste("Train:", nrow(train2), "| Val:", nrow(val2), "| Test:", nrow(test2)),
     paste("Outputs em:", out_dir)
   ), file.path(out_dir, "cap4_resumo_final.txt"))
   
-  invisible(list(train = train2, test = test2, train_s = train_s, test_s = test_s,
-                 preprocess_params = params, scaler = scaler))
+  invisible(list(
+    train = train2, val = val2, test = test2,
+    train_s = train_s, val_s = val_s, test_s = test_s,
+    preprocess_params = params, scaler = scaler
+  ))
 }

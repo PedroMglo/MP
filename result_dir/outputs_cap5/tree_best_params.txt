@@ -1,2 +1,0 @@
-best_cp: 0.005
-best_maxdepth: 5

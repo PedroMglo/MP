@@ -4,19 +4,14 @@
 # CRISP-DM - Config + utilitarios + paths robustos (sem hardcode)
 ###############################################################################
 
+utils_file <- file.path(scripts_dir, "0_Utils.R")
+if (!file.exists(utils_file)) stop("0_Utils.R nao encontrado: ", utils_file)
+source(utils_file, encoding = "UTF-8")
+
 # =============================
 # 0) Paths robustos (auto)
 # =============================
-.get_this_file <- function() {
-  # Funciona quando chamado via source()
-  f <- tryCatch(normalizePath(sys.frame(1)$ofile, winslash = "/", mustWork = TRUE),
-                error = function(e) NA_character_)
-  if (is.na(f)) {
-    f <- tryCatch(normalizePath(attr(sys.frames()[[1]], "ofile"), winslash = "/", mustWork = TRUE),
-                  error = function(e) NA_character_)
-  }
-  f
-}
+
 
 .this_file  <- .get_this_file()
 scripts_dir <- if (!is.na(.this_file)) dirname(.this_file) else getwd()
