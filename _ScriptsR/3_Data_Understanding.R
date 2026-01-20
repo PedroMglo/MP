@@ -1,6 +1,5 @@
 ###############################################################################
 # 3_Data_Understanding.R
-# Capitulo 3: Data Understanding 
 ###############################################################################
 
 run_cap3 <- function(df, out_tables, out_figs) {
@@ -125,9 +124,6 @@ run_cap3 <- function(df, out_tables, out_figs) {
     save_lines(cor_out$msg, file.path(out_tables, "cap3_correlacao_erro.txt"))
   }
   
-  # ------------------------------------------------------------
-  # 3.11 Exec ok + sessionInfo
-  # ------------------------------------------------------------
   save_lines(c("Script Cap.3 executado com sucesso.",
                paste("Tabelas em:", out_tables),
                paste("Figuras em:", out_figs)),
@@ -143,3 +139,5 @@ run_cap3 <- function(df, out_tables, out_figs) {
     bin_cols = bin_cols
   ))
 }
+
+run_cap3(df_raw, out_cap3_tables, out_cap3_figs)

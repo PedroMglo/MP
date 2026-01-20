@@ -1,134 +1,232 @@
+##############################################################################
+# 6_Validacao_Avaliacao.R (v4 - robusto a ficheiros opcionais do Cap.5)
 ###############################################################################
-# 6_Validacao_Avaliacao.R
+# Este script:
+#   - Lê outputs do Cap.5 (metricas_cv, best_model_by_cv, previsoes_teste_final, metricas_teste_final)
+#   - Calcula diagnósticos do modelo final no teste
+#   - Cria ranking e gráfico de comparação
+#   - Interpretação: tenta ler artefactos (lasso/ridge/tree/rf/gbm) SE existirem (não falha se não existirem)
 ###############################################################################
 
-run_cap6 <- function(cap5_dir, out_dir) {
-  
+run_cap6 <- function(out_cap5, out_dir, tol = 0.5) {
+
   ensure_dir(out_dir)
-  
-  # Inputs vindos do Cap5
-  cv_path         <- file.path(cap5_dir, "metricas_cv.csv")
-  best_path       <- file.path(cap5_dir, "best_model_by_cv.txt")
-  test_final_path <- file.path(cap5_dir, "metricas_teste_final.csv")
-  pred_final_path <- file.path(cap5_dir, "previsoes_teste_final.csv")
-  
-  # ---- CV metrics (ordenar + guardar)
-  metrics_cv <- read.csv(cv_path, stringsAsFactors = FALSE) |>
-    dplyr::arrange(.data$RMSE)
-  
-  write.csv(metrics_cv, file.path(out_dir, "metricas_cv_final.csv"), row.names = FALSE)
-  
-  best_id   <- metrics_cv$model_id[1]
-  best_desc <- metrics_cv$modelo[1]
-  
-  save_lines(
-    c("Melhor modelo (criterio: menor RMSE por CV no treino):",
-      paste(best_id, "-", best_desc)),
-    file.path(out_dir, "melhor_modelo_por_cv.txt")
+
+  # ---------------------------------------------------------------------------
+  # 1) Ler outputs essenciais do Cap.5 (obrigatórios)
+  # ---------------------------------------------------------------------------
+  f_cv   <- file.path(out_cap5, "metricas_cv.csv")
+  f_best <- file.path(out_cap5, "best_model_by_cv.txt")
+  f_pred <- file.path(out_cap5, "previsoes_teste_final.csv")
+  f_met  <- file.path(out_cap5, "metricas_teste_final.csv")
+
+  must_exist <- c(f_cv, f_best, f_pred, f_met)
+  missing_must <- must_exist[!file.exists(must_exist)]
+  if (length(missing_must) > 0) {
+    stop(paste0(
+      "Faltam ficheiros essenciais do Cap.5:\n- ",
+      paste(missing_must, collapse = "\n- "),
+      "\n\nCorre primeiro o Cap.5 com sucesso."
+    ))
+  }
+
+  metrics_cv   <- read.csv(f_cv, stringsAsFactors = FALSE)
+  metrics_test <- read.csv(f_met, stringsAsFactors = FALSE)
+  preds_test   <- read.csv(f_pred, stringsAsFactors = FALSE)
+
+  # Garantir colunas mínimas nas previsões
+  if (!("y_true" %in% names(preds_test)) || !("y_pred" %in% names(preds_test))) {
+    stop("previsoes_teste_final.csv tem de ter colunas 'y_true' e 'y_pred'.")
+  }
+  if (!("y_pred_clipped" %in% names(preds_test))) {
+    preds_test$y_pred_clipped <- clip_1_5(preds_test$y_pred)
+  }
+
+  # ---------------------------------------------------------------------------
+  # 2) Ranking CV + outputs
+  # ---------------------------------------------------------------------------
+  metrics_cv_ord <- metrics_cv |> dplyr::arrange(RMSE)
+  write.csv(metrics_cv_ord, file.path(out_dir, "cap6_metricas_cv_ordenadas.csv"), row.names = FALSE)
+
+  ranking <- metrics_cv_ord |>
+    dplyr::mutate(rank_rmse = dplyr::row_number()) |>
+    dplyr::select(rank_rmse, model_id, modelo, RMSE, MAE, R2, PCT_0_5)
+  write.csv(ranking, file.path(out_dir, "cap6_ranking_modelos_cv.csv"), row.names = FALSE)
+
+  # Gráfico RMSE por modelo (base R)
+  grDevices::png(file.path(out_dir, "cap6_fig_rmse_cv_por_modelo.png"), width = 1400, height = 900, res = 150)
+  op <- par(mar = c(10, 5, 3, 1))
+  barplot(metrics_cv_ord$RMSE, names.arg = metrics_cv_ord$model_id, las = 2,
+          main = "RMSE (CV no Treino) por Modelo", ylab = "RMSE")
+  abline(h = min(metrics_cv_ord$RMSE, na.rm = TRUE), lty = 2)
+  par(op)
+  grDevices::dev.off()
+
+  # ---------------------------------------------------------------------------
+  # 3) Diagnósticos no teste (usa a tua função Utils)
+  # ---------------------------------------------------------------------------
+  preds_diag <- add_pred_diagnostics(preds_test,
+                                    y_true_col = "y_true",
+                                    y_pred_col = "y_pred",
+                                    y_pred_clip_col = "y_pred_clipped",
+                                    tol = tol)
+
+  write.csv(preds_diag, file.path(out_dir, "cap6_predicoes_com_diagnosticos.csv"), row.names = FALSE)
+
+  # Plots diagnósticos
+  save_base_png <- function(path, expr, width = 1400, height = 900, res = 150) {
+    grDevices::png(path, width = width, height = height, res = res)
+    on.exit(grDevices::dev.off(), add = TRUE)
+    force(expr)
+    invisible(path)
+  }
+
+  save_base_png(file.path(out_dir, "cap6_obs_vs_prev.png"), {
+    plot(preds_diag$y_true, preds_diag$y_pred,
+         xlab = "Observado (y_true)", ylab = "Previsto (y_pred)",
+         main = "Teste Final: Observado vs Previsto")
+    abline(0, 1, lty = 2)
+  })
+
+  save_base_png(file.path(out_dir, "cap6_residuos_vs_prev.png"), {
+    plot(preds_diag$y_pred, preds_diag$residuo,
+         xlab = "Previsto (y_pred)", ylab = "Resíduo (y_true - y_pred)",
+         main = "Teste Final: Resíduos vs Previsto")
+    abline(h = 0, lty = 2)
+  })
+
+  save_base_png(file.path(out_dir, "cap6_hist_residuos.png"), {
+    hist(preds_diag$residuo, breaks = 25,
+         main = "Teste Final: Histograma dos Resíduos",
+         xlab = "Resíduo")
+  })
+
+  save_base_png(file.path(out_dir, "cap6_hist_erro_abs.png"), {
+    hist(preds_diag$residuo_abs, breaks = 25,
+         main = "Teste Final: Histograma do Erro Absoluto",
+         xlab = "|Resíduo|")
+  })
+
+  # ---------------------------------------------------------------------------
+  # 4) Interpretação: ler artefactos do Cap.5 SE existirem
+  # ---------------------------------------------------------------------------
+  opt_files <- list(
+    lasso = file.path(out_cap5, "lasso_coeficientes_lambda1se.csv"),
+    ridge = file.path(out_cap5, "ridge_coeficientes_lambda1se.csv"),
+    tree  = file.path(out_cap5, "tree_importancia.csv"),
+    rf    = file.path(out_cap5, "rf_importancia.csv"),
+    gbm   = file.path(out_cap5, "gbm_rel_influence.csv")
   )
-  
-  # ---- Test final metrics (só 1 modelo, com/sem clipping)
-  metrics_test_final <- read.csv(test_final_path, stringsAsFactors = FALSE)
-  write.csv(metrics_test_final, file.path(out_dir, "metricas_teste_final.csv"), row.names = FALSE)
-  
-  test_row_unc  <- metrics_test_final |> dplyr::slice(1)
-  test_row_clip <- if (nrow(metrics_test_final) >= 2) metrics_test_final |> dplyr::slice(2) else NULL
-  
-  # ---- Previsões finais + diagnosticos
-  pred_best <- read.csv(pred_final_path, stringsAsFactors = FALSE) |>
-    add_pred_diagnostics(tol = 0.5)
-  
-  write.csv(pred_best, file.path(out_dir, "diagnosticos_previsoes_teste_final.csv"), row.names = FALSE)
-  
-  # ---- Graficos
-  save_plot(
-    plot_obs_vs_pred(
-      pred_best, y_pred_col = "y_pred",
-      title = paste("Observado vs Previsto (Teste final) -", best_id),
-      subtitle = best_desc
-    ),
-    file.path(out_dir, "fig_obs_vs_prev_teste_final.png"),
-    width = 7, height = 5
+
+  top_rows <- data.frame()
+
+  # Lasso/Ridge coeficientes: guardados como matriz (coef) com rownames
+  if (file.exists(opt_files$lasso)) {
+    lasso_df <- read.csv(opt_files$lasso, check.names = FALSE)
+    if (ncol(lasso_df) >= 2) {
+      term_col <- names(lasso_df)[1]
+      coef_col <- names(lasso_df)[2]
+      tmp <- data.frame(variavel = lasso_df[[term_col]],
+                        score = abs(as.numeric(lasso_df[[coef_col]])),
+                        stringsAsFactors = FALSE)
+      tmp <- tmp[tmp$variavel != "(Intercept)", , drop = FALSE]
+      tmp <- tmp |> dplyr::arrange(dplyr::desc(score)) |> dplyr::slice(1:15)
+      tmp$modelo <- "lasso"
+      top_rows <- dplyr::bind_rows(top_rows, tmp)
+    }
+  }
+
+  if (file.exists(opt_files$ridge)) {
+    ridge_df <- read.csv(opt_files$ridge, check.names = FALSE)
+    if (ncol(ridge_df) >= 2) {
+      term_col <- names(ridge_df)[1]
+      coef_col <- names(ridge_df)[2]
+      tmp <- data.frame(variavel = ridge_df[[term_col]],
+                        score = abs(as.numeric(ridge_df[[coef_col]])),
+                        stringsAsFactors = FALSE)
+      tmp <- tmp[tmp$variavel != "(Intercept)", , drop = FALSE]
+      tmp <- tmp |> dplyr::arrange(dplyr::desc(score)) |> dplyr::slice(1:15)
+      tmp$modelo <- "ridge"
+      top_rows <- dplyr::bind_rows(top_rows, tmp)
+    }
+  }
+
+  if (file.exists(opt_files$tree)) {
+    tree_imp <- read.csv(opt_files$tree, stringsAsFactors = FALSE)
+    if (all(c("variavel","importancia") %in% names(tree_imp))) {
+      tmp <- tree_imp |> dplyr::arrange(dplyr::desc(importancia)) |> dplyr::slice(1:15)
+      tmp <- tmp |> dplyr::transmute(modelo = "rpart", variavel = variavel, score = importancia)
+      top_rows <- dplyr::bind_rows(top_rows, tmp)
+    }
+  }
+
+  if (file.exists(opt_files$rf)) {
+    rf_imp <- read.csv(opt_files$rf, check.names = FALSE)
+    # 1ª coluna tende a ser o nome da variável (por causa de row.names=TRUE)
+    var_col <- names(rf_imp)[1]
+    num_cols <- names(rf_imp)[sapply(rf_imp, is.numeric)]
+    if (length(num_cols) > 0) {
+      imp_col <- num_cols[1]
+      tmp <- data.frame(variavel = rf_imp[[var_col]],
+                        score = as.numeric(rf_imp[[imp_col]]),
+                        stringsAsFactors = FALSE)
+      tmp <- tmp |> dplyr::arrange(dplyr::desc(score)) |> dplyr::slice(1:15)
+      tmp$modelo <- "rf"
+      top_rows <- dplyr::bind_rows(top_rows, tmp)
+    }
+  }
+
+  if (file.exists(opt_files$gbm)) {
+    gbm_rel <- read.csv(opt_files$gbm, stringsAsFactors = FALSE)
+    if (all(c("var","rel.inf") %in% names(gbm_rel))) {
+      tmp <- gbm_rel |> dplyr::arrange(dplyr::desc(rel.inf)) |> dplyr::slice(1:15)
+      tmp <- tmp |> dplyr::transmute(modelo = "gbm", variavel = var, score = rel.inf)
+      top_rows <- dplyr::bind_rows(top_rows, tmp)
+    }
+  }
+
+  if (nrow(top_rows) > 0) {
+    write.csv(top_rows, file.path(out_dir, "cap6_top_importancias_por_modelo.csv"), row.names = FALSE)
+
+    lines <- c("=== CAP 6 - TOP VARIAVEIS (SE DISPONIVEL) ===", "")
+    for (m in unique(top_rows$modelo)) {
+      lines <- c(lines, paste0("Modelo: ", m))
+      tmp <- top_rows[top_rows$modelo == m, , drop = FALSE]
+      lines <- c(lines, paste0("- ", tmp$variavel, " (score=", round(tmp$score, 4), ")"))
+      lines <- c(lines, "")
+    }
+    save_lines(lines, file.path(out_dir, "cap6_top_variaveis_resumo.txt"))
+  } else {
+    save_lines(c(
+      "Nao foram encontrados ficheiros opcionais de interpretacao do Cap.5 (lasso/ridge/tree/rf/gbm).",
+      "Isto e normal se esses artefactos nao tiverem sido gerados/gravados no Cap.5."
+    ), file.path(out_dir, "cap6_top_variaveis_resumo.txt"))
+  }
+
+  # ---------------------------------------------------------------------------
+  # 5) Discussão automática
+  # ---------------------------------------------------------------------------
+  best_txt <- readLines(f_best, warn = FALSE)
+  disc <- c(
+    "=== CAP 6 - DISCUSSAO (AUTO) ===",
+    "",
+    "Selecao por CV no treino (ver best_model_by_cv.txt):",
+    best_txt,
+    "",
+    "Resultados no TESTE (holdout):",
+    capture.output(print(metrics_test)),
+    "",
+    paste0("Ficheiros: ", file.path(out_dir, "cap6_predicoes_com_diagnosticos.csv")),
+    "Graficos: cap6_obs_vs_prev.png, cap6_residuos_vs_prev.png, cap6_hist_residuos.png, cap6_hist_erro_abs.png",
+    "Nota: se RMSE no teste >> RMSE CV, discutir overfitting/instabilidade."
   )
-  
-  save_plot(
-    plot_obs_vs_pred(
-      pred_best, y_pred_col = "y_pred_clipped",
-      title = paste("Observado vs Previsto (Teste final, clipped[1,5]) -", best_id),
-      subtitle = best_desc
-    ),
-    file.path(out_dir, "fig_obs_vs_prev_teste_final_clipped.png"),
-    width = 7, height = 5
-  )
-  
-  save_plot(
-    plot_resid_vs_pred(
-      pred_best, y_pred_col = "y_pred", resid_col = "residuo",
-      title = paste("Residuos vs Previsto (Teste final) -", best_id),
-      subtitle = best_desc
-    ),
-    file.path(out_dir, "fig_residuos_vs_prev_teste_final.png"),
-    width = 7, height = 5
-  )
-  
-  save_plot(
-    plot_hist(
-      pred_best, x_col = "residuo", bins = 30,
-      title = paste("Distribuicao dos residuos (Teste final) -", best_id),
-      subtitle = best_desc,
-      xlab = "Residuo (y_true - y_pred)"
-    ),
-    file.path(out_dir, "fig_hist_residuos_teste_final.png"),
-    width = 7, height = 5
-  )
-  
-  save_plot(
-    plot_hist(
-      pred_best, x_col = "residuo_abs", bins = 30,
-      title = paste("Distribuicao do erro absoluto (Teste final) -", best_id),
-      subtitle = best_desc,
-      xlab = "|Residuo|"
-    ),
-    file.path(out_dir, "fig_erro_absoluto_teste_final.png"),
-    width = 7, height = 5
-  )
-  
-  save_plot(
-    plot_rmse_bar_cv(metrics_cv),
-    file.path(out_dir, "fig_rmse_por_modelo_CV.png"),
-    width = 8, height = 5
-  )
-  
-  # ---- Acc dentro de ±0.5
-  acc05      <- mean(pred_best$acc_0_5, na.rm = TRUE)
-  acc05_clip <- mean(pred_best$acc_0_5_clip, na.rm = TRUE)
-  
-  save_lines(
-    c(
-      paste("Percentagem dentro de ±0.5 (teste final, sem clipping):", round(100 * acc05, 2), "%"),
-      paste("Percentagem dentro de ±0.5 (teste final, clipped[1,5]):", round(100 * acc05_clip, 2), "%")
-    ),
-    file.path(out_dir, "acc_within_0_5_teste_final.txt")
-  )
-  
-  # ---- Resumo final
-  summary_lines <- c(
-    "CAPITULO 6 - VALIDACAO E AVALIACAO concluido.",
-    paste("Melhor modelo (por CV treino):", best_id),
-    paste("Descricao:", best_desc),
-    paste("TESTE FINAL - MAE:",  round(test_row_unc$MAE,  4)),
-    paste("TESTE FINAL - RMSE:", round(test_row_unc$RMSE, 4)),
-    paste("TESTE FINAL - R2:",   round(test_row_unc$R2,   4)),
-    paste("TESTE FINAL - % dentro ±0.5:", round(100 * test_row_unc$PCT_0_5, 2), "%"),
-    if (!is.null(test_row_clip)) paste("TESTE FINAL (clipped) - RMSE:", round(test_row_clip$RMSE, 4)) else NULL,
-    paste("Outputs em:", out_dir)
-  )
-  summary_lines <- summary_lines[!is.na(summary_lines) & nzchar(summary_lines)]
-  save_lines(summary_lines, file.path(out_dir, "cap6_resumo_final.txt"))
-  
-  print(metrics_cv)
-  print(metrics_test_final)
-  print(summary_lines)
-  
-  invisible(list(best_model_id = best_id, metrics_cv = metrics_cv, metrics_test_final = metrics_test_final))
+  save_lines(disc, file.path(out_dir, "cap6_discussao_modelos.txt"))
+
+  invisible(list(metrics_cv = metrics_cv_ord,
+                 metrics_test = metrics_test,
+                 preds_diag = preds_diag,
+                 top_vars = top_rows))
 }
+
+# Execucao (quando sourced pelo main.R, apos Cap.5)
+run_cap6(out_cap5, out_cap6, tol = 0.5)
