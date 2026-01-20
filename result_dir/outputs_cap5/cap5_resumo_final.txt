@@ -1,0 +1,7 @@
+CAPITULO 5 - MODELACAO concluido.
+Seed: 20260119
+CV folds: 5
+Melhor por CV: rf - Random Forest (mtry=3)
+Metricas CV em: C:/Users/pedro/OneDrive/Aulas - M/ModelosPervisao/SP-f/result_dir/outputs_cap5/metricas_cv.csv
+Metricas Test em: C:/Users/pedro/OneDrive/Aulas - M/ModelosPervisao/SP-f/result_dir/outputs_cap5/metricas_test.csv
+Previsoes em: C:/Users/pedro/OneDrive/Aulas - M/ModelosPervisao/SP-f/result_dir/outputs_cap5

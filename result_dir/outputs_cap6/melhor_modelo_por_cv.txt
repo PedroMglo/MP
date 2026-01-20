@@ -1,0 +1,2 @@
+Melhor modelo (criterio: menor RMSE por CV no treino):
+rf - Random Forest (mtry=3)

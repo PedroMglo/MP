@@ -1,0 +1,5 @@
+Range score_review: 2.5 a 5
+N fora de [1,5]: 0
+Resumo logavaliacoes:
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  0.000   4.680   6.078   5.753   7.352   9.442 

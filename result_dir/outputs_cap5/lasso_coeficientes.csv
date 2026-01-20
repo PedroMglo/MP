@@ -1,0 +1,15 @@
+"","s0"
+"(Intercept)",3.60789180172201
+"CarimboTripAdvisor",0.989056234677818
+"Patrocinado",1.01706402134046
+"Breakfast",0.0454045972800951
+"WiFi_gratuito",-0.150890822487103
+"Estacionamento_gratuito",0.025027340304543
+"Piscina",-0.342877804218461
+"Restaurante",-0.554802958862341
+"Servico_quartos",-0.598562985712944
+"Tomar_medidas_seguranca",0.602090649927131
+"Visitar_website_hotel",0.113100049376983
+"logavaliacoes",0.114062060140558
+"n_bin_true",0.00023097908472695
+"CarimboTripAdvisor_x_logavaliacoes",-0.430970311884753

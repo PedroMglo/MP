@@ -1,0 +1,8 @@
+CAPITULO 6 - VALIDACAO E AVALIACAO concluido.
+Melhor modelo (por CV treino): rf
+Descricao: Random Forest (mtry=3)
+TESTE - MAE: 0.3808
+TESTE - RMSE: 0.5367
+TESTE - R2: 0.4497
+TESTE - % dentro ±0.5: 72.97 %
+Outputs em: C:/Users/pedro/OneDrive/Aulas - M/ModelosPervisao/SP-f/result_dir/outputs_cap6

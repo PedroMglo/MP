@@ -1,0 +1,3 @@
+Script Cap.3 executado com sucesso.
+Tabelas em: C:/Users/pedro/OneDrive/Aulas - M/ModelosPervisao/SP-f/result_dir/outputs_tabelas_cap3
+Figuras em: C:/Users/pedro/OneDrive/Aulas - M/ModelosPervisao/SP-f/result_dir/outputs_figuras_cap3

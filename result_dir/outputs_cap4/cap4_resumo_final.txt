@@ -1,0 +1,6 @@
+CAPITULO 4 - DATA PREPARATION concluido.
+Seed: 20260119
+rare_thr: 0.02
+Drop cols (raras/NZV): Praia, Bar_lounge
+Train: 435  | Test: 111
+Outputs em: C:/Users/pedro/OneDrive/Aulas - M/ModelosPervisao/SP-f/result_dir/outputs_cap4
