@@ -1,5 +1,5 @@
 ###############################################################################
-# 2_Config.R
+# 1_Config.R
 ###############################################################################
 
 # Dataset
@@ -7,10 +7,9 @@ csv_file_name <- "Dubai_data.csv"
 csv_file <- file.path(project_dir, csv_file_name)
 df_raw <- read_dataset_auto(csv_file)
 
-# Resultados
 result_dir <- file.path(project_dir, "result_dir")
 
-# Seed global
+# Seed selecionada
 seed <- 20260119
 
 # Pastas de output 

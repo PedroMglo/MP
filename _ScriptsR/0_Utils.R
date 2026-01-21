@@ -53,8 +53,8 @@ to_binary01 <- function(x) {
   
   if (is.character(x)) {
     x_trim <- trimws(tolower(x))
-    map1 <- c("1","sim","s","yes","y","true","t")
-    map0 <- c("0","nao","não","n","no","false","f")
+    map1 <- c("TRUE")
+    map0 <- c("FALSE")
     
     out <- rep(NA_real_, length(x_trim))
     out[x_trim %in% map1] <- 1
@@ -89,7 +89,6 @@ winsorize_apply <- function(x, limits) {
   x2
 }
 
-# Fold estratificado (target discreto)
 make_folds_stratified <- function(y, k = 5, seed = 1) {
   set.seed(seed)
   yfac <- as.factor(y)
@@ -104,7 +103,6 @@ make_folds_stratified <- function(y, k = 5, seed = 1) {
   folds
 }
 
-# Modelo matrix helper (para glmnet/svm/knn)
 mmatrix <- function(df, target = "score_review") {
   f <- stats::as.formula(paste(target, "~ ."))
   x <- stats::model.matrix(f, df)[, -1, drop = FALSE]
@@ -278,7 +276,6 @@ correlation_outputs <- function(df_num_only, target = "score_review") {
   list(cor_mat = cor_mat, cor_target = cor_target_df, msg = NULL)
 }
 
-# Split estratificado train/val/test garantindo proporcoes por nivel do target
 stratified_split_3way <- function(df,
                                   target = "score_review",
                                   train_frac = 0.7,
@@ -286,9 +283,7 @@ stratified_split_3way <- function(df,
                                   seed = 1) {
   stopifnot(train_frac > 0, val_frac >= 0, train_frac + val_frac < 1)
   set.seed(seed)
-  
   strata <- as.factor(df[[target]])
-  
   train_idx <- integer(0)
   val_idx   <- integer(0)
   test_idx  <- integer(0)
@@ -300,8 +295,6 @@ stratified_split_3way <- function(df,
     n_lvl <- length(idx_lvl)
     n_train <- floor(train_frac * n_lvl)
     n_val   <- floor(val_frac * n_lvl)
-    
-    # garantir pelo menos 1 no train quando ha dados
     if (n_train < 1 && n_lvl > 0) n_train <- 1
     
     tr <- idx_lvl[seq_len(min(n_train, n_lvl))]
@@ -321,8 +314,6 @@ stratified_split_3way <- function(df,
   train_idx <- sort(unique(train_idx))
   val_idx   <- sort(unique(val_idx))
   test_idx  <- sort(unique(test_idx))
-  
-  # segurança: evitar sobreposicoes
   val_idx  <- setdiff(val_idx, train_idx)
   test_idx <- setdiff(test_idx, union(train_idx, val_idx))
   
@@ -352,8 +343,6 @@ add_pred_diagnostics <- function(df_preds,
     acc_0_5_clip  = abs(y_true - y_clip) <= tol
   )
 }
-
-
 
 
 save_plot <- function(plot_obj, path, width = 7, height = 5, dpi = 150) {
@@ -389,9 +378,6 @@ plot_rmse_bar_cv <- function(metrics_cv) {
 }
 
 
-
-# 3) Avaliacao por CV (outer CV) para qualquer modelo que consiga treinar+prever
-#    predict_fun(tr_idx, val_idx) -> list(y_true=<vector>, y_pred=<vector>)
 cv_evaluate <- function(folds, y, predict_fun) {
   rmses <- c()
   maes  <- c()
@@ -415,10 +401,8 @@ cv_evaluate <- function(folds, y, predict_fun) {
   c(RMSE = mean(rmses), MAE = mean(maes), R2 = mean(r2s), PCT_0_5 = mean(p05))
 }
 
-# 2) Baseline (media) genérico
 baseline_predict <- function(y_train, n) rep(mean(y_train, na.rm = TRUE), n)
 
-# 1) Guardar previsoes (genérico, reutilizável em Cap5/Cap6)
 save_preds_generic <- function(filename, y_true, y_pred, out_dir) {
   dfp <- data.frame(
     y_true = as.numeric(y_true),
