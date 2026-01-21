@@ -1,0 +1,9 @@
+1 -- A pasta "WiKi" contem toda a documentação relacionada com os scripts .R usados neste trabalho.
+
+2 -- A pasta "_ScriptsR" contem os vários scripts documentados e que são executados de forma automática pelo script principal "main.R" localizado na raiz deste projeto.
+
+3 -- o ficheiro "main.R" ocupa o papel de orquestrador da pipeline de modelação (pasta "_ScriptsR") criada e usada neste projeto.
+
+4 -- A pasta "result_dir" irá conter todos os resultados estatisticos, antes e após do treino, bem como todos os outputs de cada script criado para serem feitas analises posteriores e para enrriquecer o relatório.
+
+5 -- o ficheiro "Dubai_data.csv" reprersenta o dataset usado para este projeto.

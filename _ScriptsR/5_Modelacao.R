@@ -1,47 +1,15 @@
-###############################################################################
-# 5_Modelacao.R  (v2 - completo + alinhado com matéria: Árvores/RF/GBM + importâncias)
-###############################################################################
-# Este script:
-#   - Faz seleção de modelos/hyperparâmetros via CV APENAS no treino
-#   - Escolhe o melhor modelo por RMSE (CV treino)
-#   - Re-ajusta o melhor modelo em train+val e avalia 1x no teste (holdout)
-#   - Guarda artefactos de interpretação (importâncias, plots) para apoiar o relatório
-#
-# Entradas (do Cap.4):
-#   - train, val, test      : datasets sem escala (para árvore/RF/GBM)
-#   - train_s, val_s, test_s: datasets escalados (para lm/glmnet)
-#   - out_cap5, seed        : definidos em 2_Config.R / main.R
-#
-# Saídas principais (consumidas pelo Cap.6):
-#   - metricas_cv.csv
-#   - best_model_by_cv.txt
-#   - metricas_teste_final.csv
-#   - previsoes_teste_final.csv
-#
-# Saídas extra (interpretação / matéria):
-#   - lm_summary.txt, lm_diagnosticos.png, lm_coeficientes.csv
-#   - ridge_* , lasso_* (lambdas, coeficientes, plots)
-#   - tree_cv_grid.csv, tree_* (cp table, plotcp, arvore)
-#   - rf_cv_grid.csv, rf_importancia.csv, rf_varImpPlot.png, rf_oob_error.png
-#   - gbm_cv_grid.csv, gbm_rel_influence.csv, gbm_rel_influence.png, gbm_pdp_*.png
-###############################################################################
-
 run_cap5 <- function(train, val, test, train_s, val_s, test_s,
                      out_dir, seed = 1, k_folds = 7) {
 
   set.seed(seed)
   ensure_dir(out_dir)
 
-  # ---------------------------------------------------------------------------
-  # Helpers
-  # ---------------------------------------------------------------------------
   y_tr  <- train$score_review
   y_trs <- train_s$score_review
   y_te  <- test$score_review
 
   folds <- make_folds_stratified(y_tr, k = k_folds, seed = seed)
 
-  # Base plotting saver (para rpart / randomForest / gbm)
   save_base_png <- function(path, expr, width = 1200, height = 800, res = 150) {
     grDevices::png(path, width = width, height = height, res = res)
     on.exit(grDevices::dev.off(), add = TRUE)
@@ -49,7 +17,6 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
     invisible(path)
   }
 
-  # Guarda previsões genéricas
   save_preds_generic <- function(fname, y_true, y_pred, dir_out) {
     dfp <- data.frame(y_true = y_true, y_pred = y_pred)
     write.csv(dfp, file.path(dir_out, fname), row.names = FALSE)
@@ -62,7 +29,7 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
   res_cv <- data.frame()
 
   # ============================================================
-  # 5.0 Baseline (média do treino) - CV no treino
+  # 5.0 Baseline (média do treino)
   # ============================================================
   baseline_predict <- function(y_train, n) rep(mean(y_train, na.rm = TRUE), n)
 
@@ -282,9 +249,7 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
     file.path(out_dir, "best_model_by_cv.txt")
   )
 
-  # ============================================================
-  # AJUSTE FINAL + TESTE FINAL (1x) - refit em train+val
-  # ============================================================
+ 
   train_tv   <- dplyr::bind_rows(train,   val)
   train_tv_s <- dplyr::bind_rows(train_s, val_s)
 
@@ -304,7 +269,7 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
     saveRDS(lm_fit, file.path(out_dir, "modelo_lm.rds"))
     capture.output(summary(lm_fit), file = file.path(out_dir, "lm_summary.txt"))
 
-    # coeficientes em csv (inclui SE e p-val)
+
     sm <- summary(lm_fit)
     coefs <- as.data.frame(sm$coefficients)
     coefs$term <- rownames(coefs)
@@ -312,7 +277,7 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
     coefs <- coefs[, c("term", names(coefs)[1:4])]
     write.csv(coefs, file.path(out_dir, "lm_coeficientes.csv"), row.names = FALSE)
 
-    # Diagnósticos padrão
+
     save_base_png(file.path(out_dir, "lm_diagnosticos.png"), {
       par(mfrow = c(2, 2))
       plot(lm_fit)
@@ -367,7 +332,6 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
     write.csv(lasso_coefs, file.path(out_dir, "lasso_coeficientes_lambda1se.csv"), row.names = TRUE)
   }
 
-  # --- Árvore (rpart) + artefactos de poda / cp / importância
   if (best_model_id == "rpart") {
     tree_fit <- rpart::rpart(
       score_review ~ ., data = train_tv, method = "anova",
@@ -381,7 +345,7 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
       paste("best_maxdepth:", best_tree$maxdepth)
     ), file.path(out_dir, "tree_best_params.txt"))
 
-    # cptable + plotcp (matéria: seleção de cp / poda)
+
     cpt <- as.data.frame(tree_fit$cptable)
     write.csv(cpt, file.path(out_dir, "tree_cptable.csv"), row.names = FALSE)
 
@@ -389,7 +353,6 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
       rpart::plotcp(tree_fit)
     })
 
-    # árvore plot
     if (requireNamespace("rpart.plot", quietly = TRUE)) {
       save_base_png(file.path(out_dir, "arvore_rpart.png"), {
         rpart.plot::rpart.plot(tree_fit, main = "Arvore de Regressao (rpart)")
@@ -546,5 +509,4 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
   ))
 }
 
-# Execucao (quando sourced pelo main.R, apos Cap4)
 run_cap5(train, val, test, train_s, val_s, test_s, out_cap5, seed = seed)

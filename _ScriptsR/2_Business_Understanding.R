@@ -1,7 +1,3 @@
-###############################################################################
-# 2_Business_Understanding.R
-###############################################################################
-
 run_cap1 <- function(df,
                      out_dir,
                      target = "score_review",
@@ -9,16 +5,13 @@ run_cap1 <- function(df,
 
   ensure_dir(out_dir)
 
-  # ----------------------------
-  # 1) Identificação do problema
-  # ----------------------------
+
   n_obs  <- nrow(df)
   n_vars <- ncol(df)
 
 
   predictors <- setdiff(names(df), target)
 
-  # Tipos simples
   var_type <- sapply(df, function(x) {
     if (is.numeric(x)) "numerica"
     else if (is.logical(x)) "logica"
@@ -26,7 +19,6 @@ run_cap1 <- function(df,
     else class(x)[1]
   })
 
-  # Heurística para binárias
   is_bin <- sapply(df[predictors], function(x) {
     if (is.logical(x)) return(TRUE)
     if (is.numeric(x)) {
@@ -40,17 +32,12 @@ run_cap1 <- function(df,
     FALSE
   })
 
-  # ----------------------------
-  # 2) Hipóteses iniciais (sinais esperados)
-  # ----------------------------
-  # Nota: são hipóteses para guiar interpretação — serão validadas na modelação.
   hypotheses <- data.frame(
     variavel = predictors,
     hipotese = NA_character_,
     stringsAsFactors = FALSE
   )
 
-  # Hipóteses específicas do dataset (ajusta se necessário no relatório)
   set_hyp <- function(v, txt) {
     if (v %in% hypotheses$variavel) hypotheses$hipotese[hypotheses$variavel == v] <<- txt
   }
@@ -61,19 +48,14 @@ run_cap1 <- function(df,
   set_hyp("Visitar_website_hotel", "Efeito possivelmente positivo (hotéis mais estruturados/atrativos), mas pode ser proxy de procura.")
   set_hyp("logavaliacoes", "Efeito incerto: mais avaliacoes pode estabilizar rating; pode tambem refletir maior heterogeneidade.")
 
-  # Amenities (em geral, esperar sinal positivo)
   amenity_vars <- c("Breakfast","WiFi_gratuito","Estacionamento_gratuito","Piscina",
                     "Restaurante","Servico_quartos","Praia","Bar_lounge")
   for (v in amenity_vars) {
     set_hyp(v, "Espera-se associacao positiva (amenity/servico adicional tende a melhorar experiencia).")
   }
 
-  # Se alguma hipótese ficou em branco, preencher com default
   hypotheses$hipotese[is.na(hypotheses$hipotese)] <- "Hipotese a discutir no relatorio (sinal esperado nao definido a priori)."
 
-  # ----------------------------
-  # 3) Critérios de sucesso (métricas)
-  # ----------------------------
   success_lines <- c(
     "Metricas principais: RMSE, MAE e R2 (no conjunto de teste).",
     paste0("Metrica complementar: percentagem de previsoes dentro de ±", tol_within,
@@ -81,9 +63,6 @@ run_cap1 <- function(df,
     "Comparacao com baseline: prever a media do score no treino."
   )
 
-  # ----------------------------
-  # 4) Restrições e notas de qualidade de dados (alto nível)
-  # ----------------------------
   n_dup <- sum(duplicated(df))
   miss  <- missing_summary_df(df)
 
@@ -108,9 +87,7 @@ run_cap1 <- function(df,
     "Nota: o pipeline posterior faz pre-processamento (imputacao, binarizacao, winsorizacao e escalamento) e avalia modelos em train/val/test."
   )
 
-  # ----------------------------
-  # 5) Plano CRISP-DM (mapa rápido para o relatório)
-  # ----------------------------
+
   crisp_lines <- c(
     "CRISP-DM (resumo):",
     "  1) Business Understanding: este ficheiro (objetivo, hipoteses, criterios de sucesso).",
@@ -121,9 +98,7 @@ run_cap1 <- function(df,
     "  6) Deployment: fora do ambito (entrega do relatorio e codigo reproduzivel)."
   )
 
-  # ----------------------------
-  # 6) Construir e guardar outputs
-  # ----------------------------
+
   lines <- c(
     "=== CAPITULO 1: BUSINESS UNDERSTANDING ===",
     "",
@@ -155,7 +130,7 @@ run_cap1 <- function(df,
   save_lines(lines, file.path(out_dir, "business_understanding.txt"))
 
   # Dicionário de variáveis
-  bin_flag <- is_bin[match(names(df), names(is_bin))]  # NA para variaveis nao preditoras
+  bin_flag <- is_bin[match(names(df), names(is_bin))]  # NA para variaveis nao preditivas
   dict <- data.frame(
     variavel = names(df),
     tipo     = unname(var_type),
@@ -168,7 +143,7 @@ run_cap1 <- function(df,
   )
   write.csv(dict, file.path(out_dir, "dicionario_variaveis.csv"), row.names = FALSE)
 
-  # Distribuicao do target
+  # Distribuicao
   tgt_tab <- as.data.frame(table(df[[target]], useNA = "ifany"))
   names(tgt_tab) <- c(target, "freq")
   write.csv(tgt_tab, file.path(out_dir, "distribuicao_target.csv"), row.names = FALSE)

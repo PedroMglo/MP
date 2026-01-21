@@ -1,7 +1,3 @@
-###############################################################################
-# 1_Config.R
-###############################################################################
-
 # Dataset
 csv_file_name <- "Dubai_data.csv"
 csv_file <- file.path(project_dir, csv_file_name)
@@ -25,7 +21,6 @@ dir.create(out_cap4,        recursive = TRUE, showWarnings = FALSE)
 dir.create(out_cap5,        recursive = TRUE, showWarnings = FALSE)
 dir.create(out_cap6,        recursive = TRUE, showWarnings = FALSE)
 
-# Controlos 
 RUN_CAP3 <- TRUE
 RUN_CAP4 <- TRUE
 RUN_CAP5 <- TRUE

@@ -1,14 +1,10 @@
-###############################################################################
-# 3_Data_Understanding.R
-###############################################################################
-
 run_cap3 <- function(df, out_tables, out_figs) {
   
   if (!dir.exists(out_tables)) dir.create(out_tables, recursive = TRUE)
   if (!dir.exists(out_figs))   dir.create(out_figs,   recursive = TRUE)
   
   # ------------------------------------------------------------
-  # 3.0 Snapshot estrutura
+  # 3.0 Snapshot inicial
   # ------------------------------------------------------------
   write_text_snapshot(df, file.path(out_tables, "cap3_estrutura_dataset.txt"))
   
@@ -59,7 +55,7 @@ run_cap3 <- function(df, out_tables, out_figs) {
   }
   
   # ------------------------------------------------------------
-  # 3.7 logavaliacoes: hist + box
+  # 3.7  hist + box
   # ------------------------------------------------------------
   if ("logavaliacoes" %in% names(df)) {
     p_hist <- plot_hist_numeric(df, var = "logavaliacoes", bins = 30)

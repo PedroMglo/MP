@@ -1,19 +1,9 @@
-##############################################################################
-# 6_Validacao_Avaliacao.R (v4 - robusto a ficheiros opcionais do Cap.5)
-###############################################################################
-# Este script:
-#   - Lê outputs do Cap.5 (metricas_cv, best_model_by_cv, previsoes_teste_final, metricas_teste_final)
-#   - Calcula diagnósticos do modelo final no teste
-#   - Cria ranking e gráfico de comparação
-#   - Interpretação: tenta ler artefactos (lasso/ridge/tree/rf/gbm) SE existirem (não falha se não existirem)
-###############################################################################
-
 run_cap6 <- function(out_cap5, out_dir, tol = 0.5) {
 
   ensure_dir(out_dir)
 
   # ---------------------------------------------------------------------------
-  # 1) Ler outputs essenciais do Cap.5 (obrigatórios)
+  # 1) Ler outputs do Cap.5 
   # ---------------------------------------------------------------------------
   f_cv   <- file.path(out_cap5, "metricas_cv.csv")
   f_best <- file.path(out_cap5, "best_model_by_cv.txt")
@@ -228,5 +218,4 @@ run_cap6 <- function(out_cap5, out_dir, tol = 0.5) {
                  top_vars = top_rows))
 }
 
-# Execucao (quando sourced pelo main.R, apos Cap.5)
 run_cap6(out_cap5, out_cap6, tol = 0.5)
