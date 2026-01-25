@@ -167,11 +167,16 @@ unique_counts_df <- function(df) {
     dplyr::arrange(.data$n_unicos)
 }
 
+# write_summary_txt <- function(df, path) {
+#   sink(path)
+#   summary(df)
+#   sink()
+# }
 write_summary_txt <- function(df, path) {
-  sink(path)
-  summary(df)
-  sink()
+  out <- capture.output(summary(df))
+  writeLines(out, path, useBytes = TRUE)
 }
+
 
 
 plot_target_bar <- function(df, target = "score_review") {
