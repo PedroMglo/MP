@@ -76,58 +76,58 @@ run_cap1 <- function(df,
 
   target_rng     <- range(df[[target]], na.rm = TRUE)
   target_outside <- sum(df[[target]] < 1 | df[[target]] > 5, na.rm = TRUE)
+  # 
+  # quality_lines <- c(
+  #   paste0("Numero de observacoes: ", n_obs),
+  #   paste0("Numero de variaveis: ", n_vars, " (", length(predictors), " preditoras + 1 target)"),
+  #   paste0("Linhas duplicadas (brutas): ", n_dup),
+  #   miss_note,
+  #   paste0("Range observado do target '", target, "': ", paste(target_rng, collapse = " a ")),
+  #   paste0("Observacoes com '", target, "' fora de [1,5]: ", target_outside),
+  #   "Nota: o pipeline posterior faz pre-processamento (imputacao, binarizacao, winsorizacao e escalamento) e avalia modelos em train/val/test."
+  # )
 
-  quality_lines <- c(
-    paste0("Numero de observacoes: ", n_obs),
-    paste0("Numero de variaveis: ", n_vars, " (", length(predictors), " preditoras + 1 target)"),
-    paste0("Linhas duplicadas (brutas): ", n_dup),
-    miss_note,
-    paste0("Range observado do target '", target, "': ", paste(target_rng, collapse = " a ")),
-    paste0("Observacoes com '", target, "' fora de [1,5]: ", target_outside),
-    "Nota: o pipeline posterior faz pre-processamento (imputacao, binarizacao, winsorizacao e escalamento) e avalia modelos em train/val/test."
-  )
+  # 
+  # crisp_lines <- c(
+  #   "CRISP-DM (resumo):",
+  #   "  1) Business Understanding: este ficheiro (objetivo, hipoteses, criterios de sucesso).",
+  #   "  2) Data Understanding: Capitulo 3 (snapshot, missing, duplicados, distribuicoes, correlacoes).",
+  #   "  3) Data Preparation: Capitulo 4 (limpeza, imputacao, features, split e escalamento).",
+  #   "  4) Modeling: Capitulo 5 (baseline, lm, ridge, lasso, arvore, RF, GBM + CV/tuning).",
+  #   "  5) Evaluation: Capitulo 6 (avaliacao final no teste, comparacao e interpretacao).",
+  #   "  6) Deployment: fora do ambito (entrega do relatorio e codigo reproduzivel)."
+  # )
 
 
-  crisp_lines <- c(
-    "CRISP-DM (resumo):",
-    "  1) Business Understanding: este ficheiro (objetivo, hipoteses, criterios de sucesso).",
-    "  2) Data Understanding: Capitulo 3 (snapshot, missing, duplicados, distribuicoes, correlacoes).",
-    "  3) Data Preparation: Capitulo 4 (limpeza, imputacao, features, split e escalamento).",
-    "  4) Modeling: Capitulo 5 (baseline, lm, ridge, lasso, arvore, RF, GBM + CV/tuning).",
-    "  5) Evaluation: Capitulo 6 (avaliacao final no teste, comparacao e interpretacao).",
-    "  6) Deployment: fora do ambito (entrega do relatorio e codigo reproduzivel)."
-  )
-
-
-  lines <- c(
-    "=== CAPITULO 1: BUSINESS UNDERSTANDING ===",
-    "",
-    "1) Objetivo do trabalho",
-    paste0("- Prever o score de avaliacao ('", target, "') de hoteis (escala 1 a 5) usando variaveis explicativas do dataset."),
-    "- O problema e formulado como regressao (target quantitativa).",
-    "",
-    "2) Questoes de negocio / analiticas (exemplos)",
-    "- Quais as caracteristicas (amenities/indicadores) mais associadas a melhores scores?",
-    "- E possivel melhorar significativamente a baseline (media) com modelos mais flexiveis (arvores/RF/GBM)?",
-    "- Quais variaveis parecem ter maior impacto e com que direcao?",
-    "",
-    "3) Variavel target e preditoras",
-    paste0("- Target: ", target, " (1 a 5)"),
-    paste0("- Preditoras (", length(predictors), "): ", paste(predictors, collapse = ", ")),
-    "",
-    "4) Hipoteses iniciais (a validar na modelacao)",
-    paste0("- ", paste0(hypotheses$variavel, ": ", hypotheses$hipotese, collapse = "\n- ")),
-    "",
-    "5) Criterios de sucesso",
-    paste0("- ", paste(success_lines, collapse = "\n- ")),
-    "",
-    "6) Restrições e qualidade de dados (alto nível)",
-    paste0("- ", paste(quality_lines, collapse = "\n- ")),
-    "",
-    paste(crisp_lines, collapse = "\n")
-  )
-
-  save_lines(lines, file.path(out_dir, "business_understanding.txt"))
+  # lines <- c(
+  #   "=== CAPITULO 1: BUSINESS UNDERSTANDING ===",
+  #   "",
+  #   "1) Objetivo do trabalho",
+  #   paste0("- Prever o score de avaliacao ('", target, "') de hoteis (escala 1 a 5) usando variaveis explicativas do dataset."),
+  #   "- O problema e formulado como regressao (target quantitativa).",
+  #   "",
+  #   "2) Questoes de negocio / analiticas (exemplos)",
+  #   "- Quais as caracteristicas (amenities/indicadores) mais associadas a melhores scores?",
+  #   "- E possivel melhorar significativamente a baseline (media) com modelos mais flexiveis (arvores/RF/GBM)?",
+  #   "- Quais variaveis parecem ter maior impacto e com que direcao?",
+  #   "",
+  #   "3) Variavel target e preditoras",
+  #   paste0("- Target: ", target, " (1 a 5)"),
+  #   paste0("- Preditoras (", length(predictors), "): ", paste(predictors, collapse = ", ")),
+  #   "",
+  #   "4) Hipoteses iniciais (a validar na modelacao)",
+  #   paste0("- ", paste0(hypotheses$variavel, ": ", hypotheses$hipotese, collapse = "\n- ")),
+  #   "",
+  #   "5) Criterios de sucesso",
+  #   paste0("- ", paste(success_lines, collapse = "\n- ")),
+  #   "",
+  #   "6) Restrições e qualidade de dados (alto nível)",
+  #   paste0("- ", paste(quality_lines, collapse = "\n- ")),
+  #   "",
+  #   paste(crisp_lines, collapse = "\n")
+  # )
+  # 
+  # save_lines(lines, file.path(out_dir, "business_understanding.txt"))
 
   # Dicionário de variáveis
   bin_flag <- is_bin[match(names(df), names(is_bin))]  # NA para variaveis nao preditivas

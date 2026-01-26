@@ -6,11 +6,11 @@ run_cap6 <- function(out_cap5, out_dir, tol = 0.5) {
   # 1) Ler outputs do Cap.5 
   # ---------------------------------------------------------------------------
   f_cv   <- file.path(out_cap5, "metricas_cv.csv")
-  f_best <- file.path(out_cap5, "best_model_by_cv.txt")
+  # f_best <- file.path(out_cap5, "best_model_by_cv.txt")
   f_pred <- file.path(out_cap5, "previsoes_teste_final.csv")
   f_met  <- file.path(out_cap5, "metricas_teste_final.csv")
 
-  must_exist <- c(f_cv, f_best, f_pred, f_met)
+  must_exist <- c(f_cv, f_pred, f_met)
   missing_must <- must_exist[!file.exists(must_exist)]
   if (length(missing_must) > 0) {
     stop(paste0(
@@ -96,6 +96,50 @@ run_cap6 <- function(out_cap5, out_dir, tol = 0.5) {
          main = "Teste Final: Histograma do Erro Absoluto",
          xlab = "|Resíduo|")
   })
+  
+  # ---------------------------------------------------------------------------
+  # 3b) NOVO: Desempenho por nível do score (Figura C6-6)
+  # ---------------------------------------------------------------------------
+  
+  # Resumo por nível do y_true (teste)
+  perf_by_level <- preds_diag |>
+    dplyr::group_by(y_true) |>
+    dplyr::summarise(
+      n = dplyr::n(),
+      mean_pred = mean(y_pred, na.rm = TRUE),
+      mae = mean(residuo_abs, na.rm = TRUE),
+      pct_0_5 = mean(acc_0_5, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::arrange(y_true)
+  
+  # (Opcional mas útil) guardar tabela para anexo
+  write.csv(perf_by_level, file.path(out_dir, "cap6_desempenho_por_nivel_score.csv"), row.names = FALSE)
+  
+  # Figura C6-6: PCT_0_5 por nível do score (com n anotado)
+  save_base_png(file.path(out_dir, "cap6_pct_0_5_por_nivel_score.png"), {
+    op <- par(mar = c(6, 5, 3, 1))
+    
+    bp <- barplot(
+      height = perf_by_level$pct_0_5,
+      names.arg = perf_by_level$y_true,
+      ylim = c(0, 1),
+      xlab = "score_review observado (y_true)",
+      ylab = "PCT_0_5 (|erro| ≤ 0,5)",
+      main = "Teste Final: Taxa dentro ±0,5 por nível do score"
+    )
+    
+    # Linha de referência: taxa global dentro ±0,5 no teste
+    abline(h = mean(preds_diag$acc_0_5, na.rm = TRUE), lty = 2)
+    
+    # Anotar n por nível
+    text(bp, perf_by_level$pct_0_5,
+         labels = paste0("n=", perf_by_level$n),
+         pos = 3, cex = 0.85)
+    
+    par(op)
+  })
+  
 
   # ---------------------------------------------------------------------------
   # 4) Interpretação: ler artefactos do Cap.5 SE existirem
@@ -178,39 +222,22 @@ run_cap6 <- function(out_cap5, out_dir, tol = 0.5) {
   if (nrow(top_rows) > 0) {
     write.csv(top_rows, file.path(out_dir, "cap6_top_importancias_por_modelo.csv"), row.names = FALSE)
 
-    lines <- c("=== CAP 6 - TOP VARIAVEIS (SE DISPONIVEL) ===", "")
-    for (m in unique(top_rows$modelo)) {
-      lines <- c(lines, paste0("Modelo: ", m))
-      tmp <- top_rows[top_rows$modelo == m, , drop = FALSE]
-      lines <- c(lines, paste0("- ", tmp$variavel, " (score=", round(tmp$score, 4), ")"))
-      lines <- c(lines, "")
-    }
-    save_lines(lines, file.path(out_dir, "cap6_top_variaveis_resumo.txt"))
-  } else {
-    save_lines(c(
-      "Nao foram encontrados ficheiros opcionais de interpretacao do Cap.5 (lasso/ridge/tree/rf/gbm).",
-      "Isto e normal se esses artefactos nao tiverem sido gerados/gravados no Cap.5."
-    ), file.path(out_dir, "cap6_top_variaveis_resumo.txt"))
-  }
+    # lines <- c("=== CAP 6 - TOP VARIAVEIS (SE DISPONIVEL) ===", "")
+    # for (m in unique(top_rows$modelo)) {
+    #   lines <- c(lines, paste0("Modelo: ", m))
+    #   tmp <- top_rows[top_rows$modelo == m, , drop = FALSE]
+    #   lines <- c(lines, paste0("- ", tmp$variavel, " (score=", round(tmp$score, 4), ")"))
+    #   lines <- c(lines, "")
+    # }
+    # save_lines(lines, file.path(out_dir, "cap6_top_variaveis_resumo.txt"))
+  } 
+  # else {
+  #   save_lines(c(
+  #     "Nao foram encontrados ficheiros opcionais de interpretacao do Cap.5 (lasso/ridge/tree/rf/gbm).",
+  #     "Isto e normal se esses artefactos nao tiverem sido gerados/gravados no Cap.5."
+  #   ), file.path(out_dir, "cap6_top_variaveis_resumo.txt"))
+  # }
 
-  # ---------------------------------------------------------------------------
-  # 5) Discussão automática
-  # ---------------------------------------------------------------------------
-  best_txt <- readLines(f_best, warn = FALSE)
-  disc <- c(
-    "=== CAP 6 - DISCUSSAO (AUTO) ===",
-    "",
-    "Selecao por CV no treino (ver best_model_by_cv.txt):",
-    best_txt,
-    "",
-    "Resultados no TESTE (holdout):",
-    capture.output(print(metrics_test)),
-    "",
-    paste0("Ficheiros: ", file.path(out_dir, "cap6_predicoes_com_diagnosticos.csv")),
-    "Graficos: cap6_obs_vs_prev.png, cap6_residuos_vs_prev.png, cap6_hist_residuos.png, cap6_hist_erro_abs.png",
-    "Nota: se RMSE no teste >> RMSE CV, discutir overfitting/instabilidade."
-  )
-  save_lines(disc, file.path(out_dir, "cap6_discussao_modelos.txt"))
 
   invisible(list(metrics_cv = metrics_cv_ord,
                  metrics_test = metrics_test,

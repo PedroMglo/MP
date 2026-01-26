@@ -1,13 +1,3 @@
-.get_this_file <- function() {
-  f <- tryCatch(normalizePath(sys.frame(1)$ofile, winslash = "/", mustWork = TRUE),
-                error = function(e) NA_character_)
-  if (is.na(f)) {
-    f <- tryCatch(normalizePath(attr(sys.frames()[[1]], "ofile"), winslash = "/", mustWork = TRUE),
-                  error = function(e) NA_character_)
-  }
-  f
-}
-
 ensure_dir <- function(path) {
   if (!dir.exists(path)) dir.create(path, recursive = TRUE)
   invisible(path)
@@ -167,11 +157,7 @@ unique_counts_df <- function(df) {
     dplyr::arrange(.data$n_unicos)
 }
 
-# write_summary_txt <- function(df, path) {
-#   sink(path)
-#   summary(df)
-#   sink()
-# }
+
 write_summary_txt <- function(df, path) {
   out <- capture.output(summary(df))
   writeLines(out, path, useBytes = TRUE)
@@ -355,33 +341,11 @@ save_plot <- function(plot_obj, path, width = 7, height = 5, dpi = 150) {
   invisible(path)
 }
 
-plot_obs_vs_pred <- function(df, y_pred_col = "y_pred", title, subtitle) {
-  ggplot2::ggplot(df, ggplot2::aes(x = .data$y_true, y = .data[[y_pred_col]])) +
-    ggplot2::geom_point(alpha = 0.6) +
-    ggplot2::geom_abline(slope = 1, intercept = 0) +
-    ggplot2::labs(title = title, subtitle = subtitle, x = "Score observado (y_true)", y = paste0("Score previsto (", y_pred_col, ")"))
-}
-
-plot_resid_vs_pred <- function(df, y_pred_col = "y_pred", resid_col = "residuo", title, subtitle) {
-  ggplot2::ggplot(df, ggplot2::aes(x = .data[[y_pred_col]], y = .data[[resid_col]])) +
-    ggplot2::geom_point(alpha = 0.6) +
-    ggplot2::geom_hline(yintercept = 0) +
-    ggplot2::labs(title = title, subtitle = subtitle, x = paste0("Score previsto (", y_pred_col, ")"), y = paste0("Residuo (", resid_col, ")"))
-}
-
 plot_hist <- function(df, x_col, bins = 30, title, subtitle, xlab) {
   ggplot2::ggplot(df, ggplot2::aes(x = .data[[x_col]])) +
     ggplot2::geom_histogram(bins = bins) +
     ggplot2::labs(title = title, subtitle = subtitle, x = xlab, y = "Frequencia")
 }
-
-plot_rmse_bar_cv <- function(metrics_cv) {
-  ggplot2::ggplot(metrics_cv, ggplot2::aes(x = reorder(.data$modelo, .data$RMSE), y = .data$RMSE)) +
-    ggplot2::geom_col() +
-    ggplot2::coord_flip() +
-    ggplot2::labs(title = "RMSE por modelo (CV no treino)", x = "Modelo", y = "RMSE (CV)")
-}
-
 
 cv_evaluate <- function(folds, y, predict_fun) {
   rmses <- c()
@@ -406,13 +370,11 @@ cv_evaluate <- function(folds, y, predict_fun) {
   c(RMSE = mean(rmses), MAE = mean(maes), R2 = mean(r2s), PCT_0_5 = mean(p05))
 }
 
+# baseline_predict <- function(y_train, n) rep(mean(y_train, na.rm = TRUE), n)
 baseline_predict <- function(y_train, n) rep(mean(y_train, na.rm = TRUE), n)
 
-save_preds_generic <- function(filename, y_true, y_pred, out_dir) {
-  dfp <- data.frame(
-    y_true = as.numeric(y_true),
-    y_pred = as.numeric(y_pred),
-    y_pred_clipped = clip_1_5(as.numeric(y_pred))
-  )
-  write.csv(dfp, file.path(out_dir, filename), row.names = FALSE)
+save_preds_generic <- function(fname, y_true, y_pred, dir_out) {
+  dfp <- data.frame(y_true = y_true, y_pred = y_pred)
+  write.csv(dfp, file.path(dir_out, fname), row.names = FALSE)
+  invisible(dfp)
 }
