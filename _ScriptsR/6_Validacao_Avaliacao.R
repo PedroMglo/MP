@@ -222,21 +222,8 @@ run_cap6 <- function(out_cap5, out_dir, tol = 0.5) {
   if (nrow(top_rows) > 0) {
     write.csv(top_rows, file.path(out_dir, "cap6_top_importancias_por_modelo.csv"), row.names = FALSE)
 
-    # lines <- c("=== CAP 6 - TOP VARIAVEIS (SE DISPONIVEL) ===", "")
-    # for (m in unique(top_rows$modelo)) {
-    #   lines <- c(lines, paste0("Modelo: ", m))
-    #   tmp <- top_rows[top_rows$modelo == m, , drop = FALSE]
-    #   lines <- c(lines, paste0("- ", tmp$variavel, " (score=", round(tmp$score, 4), ")"))
-    #   lines <- c(lines, "")
-    # }
-    # save_lines(lines, file.path(out_dir, "cap6_top_variaveis_resumo.txt"))
   } 
-  # else {
-  #   save_lines(c(
-  #     "Nao foram encontrados ficheiros opcionais de interpretacao do Cap.5 (lasso/ridge/tree/rf/gbm).",
-  #     "Isto e normal se esses artefactos nao tiverem sido gerados/gravados no Cap.5."
-  #   ), file.path(out_dir, "cap6_top_variaveis_resumo.txt"))
-  # }
+
 
 
   invisible(list(metrics_cv = metrics_cv_ord,

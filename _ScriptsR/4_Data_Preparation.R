@@ -191,20 +191,7 @@ run_cap4 <- function(df_raw,
     stringsAsFactors = FALSE
   )
   write.csv(qc_df, file.path(out_dir, "cap4_qc_basic.csv"), row.names = FALSE)
-  
-  # Resumo QC em TXT
-  # qc_lines <- c(
-  #   "CAPITULO 4 - QC (limpeza basica) ",
-  #   paste("n_raw:", qc$n_raw),
-  #   paste("n_dup_raw:", qc$n_dup_raw),
-  #   paste("n_missing_target_raw:", qc$n_missing_target_raw),
-  #   paste("n_after_drop_missing_target:", qc$n_after_drop_missing_target),
-  #   paste("n_after_dedup:", qc$n_after_dedup),
-  #   paste("n_target_na_after_numeric:", qc$n_target_na_after_numeric),
-  #   paste("n_after_drop_non_numeric_target:", qc$n_after_drop_non_numeric_target),
-  #   paste("n_target_outside_1_5:", qc$n_target_outside_1_5)
-  # )
-  # save_lines(qc_lines, file.path(out_dir, "cap4_qc_basic.txt"))
+
   
   
   split3 <- stratified_split_3way(
@@ -429,16 +416,7 @@ run_cap4 <- function(df_raw,
   }
   
   
-  # save_lines(c(
-  #   "CAPITULO 4 - DATA PREPARATION concluido.",
-  #   paste("Seed:", seed),
-  #   paste("train_frac:", train_frac, "| val_frac:", val_frac, "| test_frac:", round(1 - train_frac - val_frac, 3)),
-  #   paste("rare_thr:", params$rare_thr),
-  #   paste("Drop cols (raras/NZV):", if (length(params$drop_cols) == 0) "nenhuma" else paste(params$drop_cols, collapse = ", ")),
-  #   paste("Train:", nrow(train2), "| Val:", nrow(val2), "| Test:", nrow(test2)),
-  #   paste("Outputs em:", out_dir)
-  # ), file.path(out_dir, "cap4_resumo_final.txt"))
-  
+
   invisible(list(
     train = train2, val = val2, test = test2,
     train_s = train_s, val_s = val_s, test_s = test_s,

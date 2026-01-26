@@ -294,12 +294,6 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
 
   best_model_id   <- res_cv_sorted$model_id[1]
   best_model_desc <- res_cv_sorted$modelo[1]
-  # 
-  # save_lines(
-  #   c(paste("Melhor modelo escolhido por CV (treino):", best_model_id),
-  #     paste("Descricao:", best_model_desc)),
-  #   file.path(out_dir, "best_model_by_cv.txt")
-  # )
 
  
   train_tv   <- dplyr::bind_rows(train,   val)
@@ -346,10 +340,6 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
     final_pred_test <- as.numeric(stats::predict(cv_fit, newx = mmatrix(test_s)$x, s = "lambda.1se"))
 
     saveRDS(cv_fit, file.path(out_dir, "modelo_ridge_cvglmnet.rds"))
-    # save_lines(c(
-    #   paste("lambda_min:", cv_fit$lambda.min),
-    #   paste("lambda_1se:", cv_fit$lambda.1se)
-    # ), file.path(out_dir, "ridge_lambdas.txt"))
 
     # plot CV
     save_base_png(file.path(out_dir, "ridge_cv_plot.png"), {
@@ -370,10 +360,6 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
     final_pred_test <- as.numeric(stats::predict(cv_fit, newx = mmatrix(test_s)$x, s = "lambda.1se"))
 
     saveRDS(cv_fit, file.path(out_dir, "modelo_lasso_cvglmnet.rds"))
-    # save_lines(c(
-    #   paste("lambda_min:", cv_fit$lambda.min),
-    #   paste("lambda_1se:", cv_fit$lambda.1se)
-    # ), file.path(out_dir, "lasso_lambdas.txt"))
 
     # plot CV
     save_base_png(file.path(out_dir, "lasso_cv_plot.png"), {
@@ -392,10 +378,6 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
     final_pred_test <- stats::predict(tree_fit, newdata = test)
 
     saveRDS(tree_fit, file.path(out_dir, "modelo_rpart.rds"))
-    # save_lines(c(
-    #   paste("best_cp:", best_tree$cp),
-    #   paste("best_maxdepth:", best_tree$maxdepth)
-    # ), file.path(out_dir, "tree_best_params.txt"))
 
 
     cpt <- as.data.frame(tree_fit$cptable)
@@ -472,12 +454,6 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
     final_pred_test <- stats::predict(fit, newdata = test, n.trees = best_iter)
 
     saveRDS(fit, file.path(out_dir, "modelo_gbm.rds"))
-    # save_lines(c(
-    #   paste("best_iter:", best_iter),
-    #   paste("depth:", best_gbm$interaction.depth),
-    #   paste("shrinkage:", best_gbm$shrinkage),
-    #   paste("grid_n.trees:", best_gbm$n.trees)
-    # ), file.path(out_dir, "gbm_best_params.txt"))
 
     # Relative influence (matéria: importância no boosting)
     rel <- gbm::summary.gbm(fit, n.trees = best_iter, plotit = FALSE)
@@ -552,27 +528,6 @@ run_cap5 <- function(train, val, test, train_s, val_s, test_s,
   
   write.csv(tab_cv_vs_test, file.path(out_dir, "cap5_cv_vs_teste_best_model.csv"), row.names = FALSE)
   
-
-  # summary_lines <- c(
-  #   "=== CAP 5 - RESUMO (MODELACAO) ===",
-  #   paste("Folds CV (treino):", k_folds),
-  #   paste("Seed:", seed),
-  #   "",
-  #   paste("Melhor modelo por CV (treino):", best_model_id),
-  #   paste("Descricao:", best_model_desc),
-  #   "",
-  #   paste("Metricas CV (ordenadas por RMSE):", file.path(out_dir, "metricas_cv.csv")),
-  #   paste("Metricas Teste FINAL em:", file.path(out_dir, "metricas_teste_final.csv")),
-  #   paste("Previsoes Teste FINAL em:", file.path(out_dir, "previsoes_teste_final.csv")),
-  #   "",
-  #   "Artefactos de interpretacao guardados (quando aplicavel):",
-  #   "- lm: lm_summary.txt, lm_diagnosticos.png, lm_coeficientes.csv",
-  #   "- glmnet: *_lambdas.txt, *_coeficientes_*.csv, *_cv_plot.png",
-  #   "- rpart: tree_cptable.csv, tree_plotcp.png, arvore_rpart.png, tree_importancia.csv",
-  #   "- rf: rf_importancia.csv, rf_varImpPlot.png, rf_oob_error.png",
-  #   "- gbm: gbm_rel_influence.csv, gbm_rel_influence.png, gbm_pdp_*.png"
-  # )
-  # save_lines(summary_lines, file.path(out_dir, "cap5_resumo_final.txt"))
 
   print(res_cv_sorted)
   print(met_test)
