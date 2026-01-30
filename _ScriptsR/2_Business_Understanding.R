@@ -38,30 +38,7 @@ run_cap1 <- function(df,
     stringsAsFactors = FALSE
   )
 
-  set_hyp <- function(v, txt) {
-    if (v %in% hypotheses$variavel) hypotheses$hipotese[hypotheses$variavel == v] <<- txt
-  }
-
-  set_hyp("CarimboTripAdvisor", "Espera-se associacao positiva (selo/credibilidade pode sinalizar qualidade).")
-  set_hyp("Patrocinado", "Efeito incerto: pode refletir marketing (sem relacao direta com qualidade) ou segmentacao de hoteis.")
-  set_hyp("Tomar_medidas_seguranca", "Espera-se associacao positiva (confianca/qualidade do servico).")
-  set_hyp("Visitar_website_hotel", "Efeito possivelmente positivo (hotéis mais estruturados/atrativos), mas pode ser proxy de procura.")
-  set_hyp("logavaliacoes", "Efeito incerto: mais avaliacoes pode estabilizar rating; pode tambem refletir maior heterogeneidade.")
-
-  amenity_vars <- c("Breakfast","WiFi_gratuito","Estacionamento_gratuito","Piscina",
-                    "Restaurante","Servico_quartos","Praia","Bar_lounge")
-  for (v in amenity_vars) {
-    set_hyp(v, "Espera-se associacao positiva (amenity/servico adicional tende a melhorar experiencia).")
-  }
-
   hypotheses$hipotese[is.na(hypotheses$hipotese)] <- "Hipotese a discutir no relatorio (sinal esperado nao definido a priori)."
-
-  success_lines <- c(
-    "Metricas principais: RMSE, MAE e R2 (no conjunto de teste).",
-    paste0("Metrica complementar: percentagem de previsoes dentro de ±", tol_within,
-           " pontos do score real (within_tolerance)."),
-    "Comparacao com baseline: prever a media do score no treino."
-  )
 
   n_dup <- sum(duplicated(df))
   miss  <- missing_summary_df(df)
@@ -77,9 +54,7 @@ run_cap1 <- function(df,
   target_rng     <- range(df[[target]], na.rm = TRUE)
   target_outside <- sum(df[[target]] < 1 | df[[target]] > 5, na.rm = TRUE)
 
-
-  # Dicionário de variáveis
-  bin_flag <- is_bin[match(names(df), names(is_bin))]  # NA para variaveis nao preditivas
+  bin_flag <- is_bin[match(names(df), names(is_bin))]  
   dict <- data.frame(
     variavel = names(df),
     tipo     = unname(var_type),
@@ -92,12 +67,10 @@ run_cap1 <- function(df,
   )
   write.csv(dict, file.path(out_dir, "dicionario_variaveis.csv"), row.names = FALSE)
 
-  # Distribuicao
   tgt_tab <- as.data.frame(table(df[[target]], useNA = "ifany"))
   names(tgt_tab) <- c(target, "freq")
   write.csv(tgt_tab, file.path(out_dir, "distribuicao_target.csv"), row.names = FALSE)
 
-  # Resumo de qualidade (missing + duplicados)
   quality_df <- miss
   quality_df$duplicados_total_dataset <- n_dup
   write.csv(quality_df, file.path(out_dir, "qualidade_dados_resumo.csv"), row.names = FALSE)

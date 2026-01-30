@@ -166,38 +166,51 @@ write_summary_txt <- function(df, path) {
 
 
 plot_target_bar <- function(df, target = "score_review") {
-  ggplot2::ggplot(df, ggplot2::aes(x = factor(.data[[target]]))) +
-    ggplot2::geom_bar() +
+  ggplot2::ggplot(df, ggplot2::aes(x = factor(.data[[target]]), fill = factor(.data[[target]]))) +
+    ggplot2::geom_bar(color = "white") +
+    ggplot2::scale_fill_brewer(palette = "Blues") +
     ggplot2::labs(
       x = paste0(target, " (1 a 5)"),
       y = "N",
       title = paste0("Distribuicao do ", target)
-    )
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(legend.position = "none")
 }
 
 plot_hist_numeric <- function(df, var, bins = 30) {
   ggplot2::ggplot(df, ggplot2::aes(x = .data[[var]])) +
-    ggplot2::geom_histogram(bins = bins) +
-    ggplot2::labs(x = var, y = "Frequencia", title = paste0("Distribuicao de ", var))
+    ggplot2::geom_histogram(bins = bins, fill = "steelblue", color = "white", alpha = 0.85) +
+    ggplot2::labs(x = var, y = "Frequencia", title = paste0("Distribuicao de ", var)) +
+    ggplot2::theme_minimal()
 }
 
 plot_box_numeric <- function(df, var) {
   ggplot2::ggplot(df, ggplot2::aes(y = .data[[var]])) +
-    ggplot2::geom_boxplot() +
-    ggplot2::labs(y = var, title = paste0("Boxplot de ", var))
+    ggplot2::geom_boxplot(fill = "tomato", alpha = 0.70, outlier.alpha = 0.35) +
+    ggplot2::labs(y = var, title = paste0("Boxplot de ", var)) +
+    ggplot2::theme_minimal()
 }
 
 plot_scatter <- function(df, xvar, yvar, alpha = 0.5) {
   ggplot2::ggplot(df, ggplot2::aes(x = .data[[xvar]], y = .data[[yvar]])) +
-    ggplot2::geom_point(alpha = alpha) +
-    ggplot2::labs(x = xvar, y = yvar, title = paste0(yvar, " vs ", xvar))
+    ggplot2::geom_point(alpha = alpha, color = "darkorange") +
+    ggplot2::labs(x = xvar, y = yvar, title = paste0(yvar, " vs ", xvar)) +
+    ggplot2::theme_minimal()
 }
 
 plot_binary_props <- function(props_df) {
-  ggplot2::ggplot(props_df, ggplot2::aes(x = reorder(.data$variavel, .data$prop_1), y = .data$prop_1)) +
-    ggplot2::geom_col() +
+  ggplot2::ggplot(props_df, ggplot2::aes(
+    x = reorder(.data$variavel, .data$prop_1),
+    y = .data$prop_1,
+    fill = .data$prop_1
+  )) +
+    ggplot2::geom_col(color = "white") +
     ggplot2::coord_flip() +
-    ggplot2::labs(title = "Proporcao de 1 nas variaveis binarias", x = "Variavel", y = "Prop(1)")
+    ggplot2::scale_fill_gradient(low = "lightblue", high = "navy") +
+    ggplot2::labs(title = "Proporcao de 1 nas variaveis binarias", x = "Variavel", y = "Prop(1)") +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(legend.position = "none")
 }
 
 coerce_all_to_numeric_safely <- function(df) {
@@ -343,9 +356,11 @@ save_plot <- function(plot_obj, path, width = 7, height = 5, dpi = 150) {
 
 plot_hist <- function(df, x_col, bins = 30, title, subtitle, xlab) {
   ggplot2::ggplot(df, ggplot2::aes(x = .data[[x_col]])) +
-    ggplot2::geom_histogram(bins = bins) +
-    ggplot2::labs(title = title, subtitle = subtitle, x = xlab, y = "Frequencia")
+    ggplot2::geom_histogram(bins = bins, fill = "steelblue", color = "white", alpha = 0.85) +
+    ggplot2::labs(title = title, subtitle = subtitle, x = xlab, y = "Frequencia") +
+    ggplot2::theme_minimal()
 }
+
 
 cv_evaluate <- function(folds, y, predict_fun) {
   rmses <- c()

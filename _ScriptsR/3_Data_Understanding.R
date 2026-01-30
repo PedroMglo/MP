@@ -58,17 +58,11 @@ run_cap3 <- function(df, out_tables, out_figs) {
     )
   }
   
-  # ------------------------------------------------------------
-  # 3.9 Relacao score vs logavaliacoes
-  #     + LOESS por CarimboTripAdvisor (se existir)
-  #     + boxplot logavaliacoes por score_review
-  # ------------------------------------------------------------
   if (all(c("score_review", "logavaliacoes") %in% names(df))) {
     
     df_39 <- df |>
       dplyr::filter(!is.na(score_review), !is.na(logavaliacoes))
-    
-    # LOESS por CarimboTripAdvisor
+
     if ("CarimboTripAdvisor" %in% names(df_39)) {
       
       df_39g <- df_39 |>
@@ -109,7 +103,6 @@ run_cap3 <- function(df, out_tables, out_figs) {
       )
     }
     
-    # Boxplot logavaliacoes por score_review
     df_biv <- df_39
     df_biv$score_review <- as.numeric(df_biv$score_review)
     df_biv$score_review_f <- factor(
@@ -119,24 +112,25 @@ run_cap3 <- function(df, out_tables, out_figs) {
     
     p_box_by_score <- ggplot2::ggplot(
       df_biv,
-      ggplot2::aes(x = score_review_f, y = logavaliacoes)
+      ggplot2::aes(x = score_review_f, y = logavaliacoes, fill = score_review_f)
     ) +
-      ggplot2::geom_boxplot() +
+      ggplot2::geom_boxplot(alpha = 0.65, outlier.alpha = 0.35) +
+      ggplot2::scale_fill_brewer(palette = "Blues") +
       ggplot2::labs(
         title = "logavaliacoes por nivel de score_review",
         x = "score_review",
         y = "logavaliacoes"
-      )
+      ) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(legend.position = "none")
     
     ggplot2::ggsave(
       file.path(out_figs, "cap3_box_logavaliacoes_por_score.png"),
       p_box_by_score, width = 7, height = 4, dpi = 150
     )
+    
   }
   
-  # ------------------------------------------------------------
-  # 3.10 Correlacoes (numericas validas)
-  # ------------------------------------------------------------
   df_num_only <- valid_numeric_cols(df_num)
   cor_out <- correlation_outputs(df_num_only, target = "score_review")
   
@@ -156,5 +150,4 @@ run_cap3 <- function(df, out_tables, out_figs) {
   ))
 }
 
-# chamada (mantém como tinhas)
 run_cap3(df_raw, out_cap3_tables, out_cap3_figs)

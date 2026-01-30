@@ -1,51 +1,39 @@
 prep_basic <- function(df) {
   stopifnot("score_review" %in% names(df))
   
-  # ----------------------------
-  # Controlo de qualidade (antes)
-  # ----------------------------
   qc <- list(
     n_raw = nrow(df),
     n_dup_raw = sum(duplicated(df)),
     n_missing_target_raw = sum(is.na(df$score_review))
   )
   
-  # Remover missing no target (regressao requer y observado)
   df <- df |> dplyr::filter(!is.na(.data$score_review))
   qc$n_after_drop_missing_target <- nrow(df)
   
-  # Remover duplicados exatos (linha completa)
   df <- df[!duplicated(df), , drop = FALSE]
   qc$n_after_dedup <- nrow(df)
   
-  # Converter target e variavel numerica de interesse
   df$score_review <- suppressWarnings(as.numeric(df$score_review))
   if ("logavaliacoes" %in% names(df)) df$logavaliacoes <- suppressWarnings(as.numeric(df$logavaliacoes))
-  
-  # Se existirem valores nao-numericos no target, caem para NA -> remover
+
   n_na_after_numeric <- sum(is.na(df$score_review))
   qc$n_target_na_after_numeric <- n_na_after_numeric
   if (n_na_after_numeric > 0) {
     df <- df |> dplyr::filter(!is.na(.data$score_review))
   }
   qc$n_after_drop_non_numeric_target <- nrow(df)
-  
-  # Garantir escala do target (1 a 5) - se houver valores fora, fazer clamp e registar
+ 
   outside <- sum(df$score_review < 1 | df$score_review > 5, na.rm = TRUE)
   qc$n_target_outside_1_5 <- outside
   if (outside > 0) {
     df$score_review <- pmin(5, pmax(1, df$score_review))
   }
-  
-  # ----------------------------
-  # Binarizacao (tudo exceto target e logavaliacoes)
-  # ----------------------------
+
   cols_except <- c("score_review", "logavaliacoes")
   for (col in setdiff(names(df), cols_except)) {
     df[[col]] <- to_binary01(df[[col]])
   }
-  
-  # Guardar qc como atributo (para o run_cap4 escrever outputs)
+
   attr(df, "cap4_qc") <- qc
   
   df
@@ -113,13 +101,11 @@ add_features <- function(df, params) {
 
 preprocess_apply <- function(df, params) {
   
-  # Drop colunas raras (fit no treino)
   if (length(params$drop_cols) > 0) {
     keep <- setdiff(names(df), params$drop_cols)
     df <- df[, keep, drop = FALSE]
   }
   
-  # Imputar binarias + characters pela moda
   for (col in names(params$mode_map)) {
     if (!col %in% names(df)) next
     m <- params$mode_map[[col]]
@@ -128,19 +114,16 @@ preprocess_apply <- function(df, params) {
     df[[col]][is.na(df[[col]])] <- m
   }
   
-  # Imputar numericas nao-binarias pela mediana
   for (col in names(params$median_map)) {
     if (!col %in% names(df)) next
     med <- params$median_map[[col]]
     df[[col]][is.na(df[[col]])] <- med
   }
   
-  # Winsor (aplicar limites fit do treino)
   if ("logavaliacoes" %in% names(df)) {
     df$logavaliacoes <- winsorize_apply(df$logavaliacoes, params$winsor_limits)
   }
   
-  # Features derivadas
   df <- add_features(df, params)
   
   df
@@ -176,15 +159,12 @@ run_cap4 <- function(df_raw,
   
   df <- prep_basic(df_raw)
   
-  # ---- QC / registos de limpeza (antes do split) ----
   qc <- attr(df, "cap4_qc")
   if (is.null(qc)) qc <- list()
   
-  # Missing por variavel (apos limpeza base do target)
   miss_df <- missing_summary_df(df)
   write.csv(miss_df, file.path(out_dir, "cap4_missing_after_basic.csv"), row.names = FALSE)
   
-  # Resumo QC em CSV
   qc_df <- data.frame(
     metric = names(qc),
     value  = unlist(qc, use.names = FALSE),
@@ -209,12 +189,8 @@ run_cap4 <- function(df_raw,
   val2   <- preprocess_apply(val,   params)
   test2  <- preprocess_apply(test,  params)
   
-  # ------------------------------------------------------------
-  # (NOVO) Resumo do split: distribuição do target por split
-  # ------------------------------------------------------------
   if ("score_review" %in% names(train) && "score_review" %in% names(val) && "score_review" %in% names(test)) {
     
-    # Tabela curta com estatísticas por split (n, média, sd)
     split_summary <- data.frame(
       split = c("train", "val", "test"),
       n = c(nrow(train), nrow(val), nrow(test)),
@@ -223,7 +199,6 @@ run_cap4 <- function(df_raw,
     )
     write.csv(split_summary, file.path(out_dir, "cap4_split_summary.csv"), row.names = FALSE)
     
-    # Distribuição do target por split (proporções por nível)
     df_dist <- dplyr::bind_rows(
       dplyr::mutate(train, split = "train"),
       dplyr::mutate(val,   split = "val"),
@@ -240,25 +215,24 @@ run_cap4 <- function(df_raw,
     
     write.csv(df_dist, file.path(out_dir, "cap4_target_dist_by_split.csv"), row.names = FALSE)
     
-    # Gráfico: barras de proporções por nível do score, facetado por split
-    p_split <- ggplot2::ggplot(df_dist, ggplot2::aes(x = score_f, y = prop)) +
-      ggplot2::geom_col() +
+    p_split <- ggplot2::ggplot(df_dist, ggplot2::aes(x = score_f, y = prop, fill = score_f)) +
+      ggplot2::geom_col(alpha = 0.85) +
       ggplot2::facet_wrap(~ split, nrow = 1) +
+      ggplot2::scale_fill_brewer(palette = "Blues") +
       ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
       ggplot2::labs(
         title = "Distribuição do score_review por split (estratificação)",
         x = "score_review",
         y = "Proporção"
       ) +
-      ggplot2::theme_minimal()
+      ggplot2::theme_minimal() +
+      ggplot2::theme(legend.position = "none")
+    
     
     save_plot(p_split, file.path(out_dir, "cap4_target_dist_by_split.png"),
               width = 9, height = 3.6, dpi = 150)
   }
   
-  # ------------------------------------------------------------
-  # (NOVO) Evidência do efeito da winsorização: antes vs depois
-  # ------------------------------------------------------------
   if (!is.null(params$winsor_limits) &&
       "logavaliacoes" %in% names(train) &&
       "logavaliacoes" %in% names(train2)) {
@@ -266,13 +240,11 @@ run_cap4 <- function(df_raw,
     lo <- params$winsor_limits$lo
     hi <- params$winsor_limits$hi
     
-    # "Antes" coerente com o pipeline: imputar NA com a mediana do treino (se existir)
     x_before <- train$logavaliacoes
     if (!is.null(params$median_map) && "logavaliacoes" %in% names(params$median_map)) {
       x_before[is.na(x_before)] <- params$median_map[["logavaliacoes"]]
     }
-    
-    # "Depois" = winsor aplicado (igual ao que o preprocess_apply faz)
+
     x_after <- winsorize_apply(x_before, params$winsor_limits)
     
     n_total <- sum(!is.na(x_before))
@@ -287,7 +259,7 @@ run_cap4 <- function(df_raw,
     df_ba <- df_ba[!is.na(df_ba$logavaliacoes), , drop = FALSE]
     
     p_winsor_ba <- ggplot2::ggplot(df_ba, ggplot2::aes(x = estado, y = logavaliacoes)) +
-      ggplot2::geom_boxplot(outlier.alpha = 0.35) +
+      ggplot2::geom_boxplot(fill = "steelblue", alpha = 0.65, outlier.alpha = 0.35) +
       ggplot2::labs(
         title = "logavaliacoes — antes vs depois da winsorização (treino)",
         subtitle = sprintf("Limites fit no treino: lo=%.3f | hi=%.3f | ajustados: abaixo_lo=%d, acima_hi=%d (n=%d)",
@@ -314,7 +286,7 @@ run_cap4 <- function(df_raw,
 
   if (all(c("score_review", "n_bin_true") %in% names(train2))) {
     p2 <- ggplot2::ggplot(train2, ggplot2::aes(x = n_bin_true, y = score_review)) +
-      ggplot2::geom_point(alpha = 0.5) +
+      ggplot2::geom_point(alpha = 0.5, color = "darkorange") +
       ggplot2::labs(
         title = "score_review vs n_bin_true (treino)",
         x = "n_bin_true (nº amenities/flags=1)",
@@ -325,7 +297,7 @@ run_cap4 <- function(df_raw,
   
   if (all(c("score_review", "logavaliacoes", "CarimboTripAdvisor") %in% names(train2))) {
     p3 <- ggplot2::ggplot(train2, ggplot2::aes(x = logavaliacoes, y = score_review)) +
-      ggplot2::geom_point(ggplot2::aes(color = factor(CarimboTripAdvisor)), alpha = 0.5) +
+      ggplot2::geom_point(ggplot2::aes(color = factor(CarimboTripAdvisor)), alpha = 0.5, color = "darkorange") +
       ggplot2::labs(
         title = "score_review vs logavaliacoes (treino), por CarimboTripAdvisor",
         x = "logavaliacoes",
@@ -344,8 +316,6 @@ run_cap4 <- function(df_raw,
   val_s   <- scale_apply(val2,   scaler)
   test_s  <- scale_apply(test2,  scaler)
   
-  
-  # 1) Check: mean e sd no treino já escalado (deve dar ~0 e ~1)
   scale_check <- data.frame(
     variavel = scaler$predictors_num,
     mean_train_scaled = sapply(train_s[scaler$predictors_num], mean, na.rm = TRUE),
@@ -365,14 +335,10 @@ run_cap4 <- function(df_raw,
   
   write.csv(data.frame(drop_cols = params$drop_cols),
             file.path(out_dir, "cap4_drop_cols_raras.csv"), row.names = FALSE)
-  
-  # ------------------------------------------------------------
-  # (NOVO) 4.5.3 Evidência NZV: prevalências + linha 2%
-  # ------------------------------------------------------------
+
   drop_cols_raras <- params$drop_cols
   if (length(drop_cols_raras) > 0) {
-    
-    # 1) Detetar colunas binárias 0/1 (exclui o target)
+
     is_binary01 <- function(x) {
       ux <- unique(x[!is.na(x)])
       length(ux) > 0 && all(ux %in% c(0, 1))
@@ -381,7 +347,6 @@ run_cap4 <- function(df_raw,
     bin_cols <- names(train)[vapply(train, is_binary01, logical(1))]
     bin_cols <- setdiff(bin_cols, "score_review")
     
-    # 2) Calcular prevalência no treino (prop de 1s)
     prev <- vapply(train[bin_cols], function(x) mean(x == 1, na.rm = TRUE), numeric(1))
     
     df_prev <- data.frame(
@@ -389,8 +354,7 @@ run_cap4 <- function(df_raw,
       prop_1 = prev,
       drop   = bin_cols %in% drop_cols_raras
     )
-    
-    # 3) Mini-plot: mostrar as mais raras (ex.: 12 menores)
+
     df_prev <- df_prev[order(df_prev$prop_1), ]
     df_prev_min <- head(df_prev, 12)
     
@@ -408,15 +372,12 @@ run_cap4 <- function(df_raw,
         fill = "Removida (NZV)"
       )
     
-    # Guardar figura (usa o teu helper save_plot se já estiveres a usar)
     ggplot2::ggsave(file.path(out_dir, "cap4_prev_binarias_nzv_2pct.png"),
                     p_nzv, width = 7, height = 4, dpi = 150)
   
     
   }
   
-  
-
   invisible(list(
     train = train2, val = val2, test = test2,
     train_s = train_s, val_s = val_s, test_s = test_s,
